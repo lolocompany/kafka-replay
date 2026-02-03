@@ -123,6 +123,15 @@ func (r *MessageFileReader) FileSize() (int64, error) {
 	return stat.Size(), nil
 }
 
+// Reset seeks back to the beginning of the file
+func (r *MessageFileReader) Reset() error {
+	if r.file == nil {
+		return fmt.Errorf("file is nil")
+	}
+	_, err := r.file.Seek(0, io.SeekStart)
+	return err
+}
+
 const (
 	// DefaultBatchSize is the default number of messages to batch before writing
 	DefaultBatchSize = 100
@@ -130,7 +139,14 @@ const (
 	DefaultBatchBytes = 10 * 1024 * 1024
 )
 
-func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *MessageFileReader, rate int) (int64, error) {
+func progressBarDescription(loopIteration int, loop bool) string {
+	if loop {
+		return fmt.Sprintf("Replaying messages (loop %d)", loopIteration)
+	}
+	return "Replaying messages"
+}
+
+func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *MessageFileReader, rate int, loop bool) (int64, error) {
 	// Get file size for progress bar
 	fileSize, err := reader.FileSize()
 	if err != nil {
@@ -138,7 +154,7 @@ func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *MessageFil
 	}
 
 	// Initialize progress bar based on file size
-	bar := progressbar.DefaultBytes(fileSize, "Replaying messages")
+	bar := progressbar.DefaultBytes(fileSize, progressBarDescription(0, loop))
 	defer bar.Close()
 
 	// Rate limiting setup
@@ -150,7 +166,8 @@ func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *MessageFil
 	}
 
 	var messageCount int64
-	var bytesRead int64 // Track total bytes read from file
+	var bytesRead int64   // Track total bytes read from file
+	var loopIteration int // Track loop iteration for display
 	batch := make([]kafka.Message, 0, DefaultBatchSize)
 	var batchBytes int64
 
@@ -183,12 +200,27 @@ func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *MessageFil
 		msg, err := reader.ReadNextMessage(ctx)
 		if err != nil {
 			if err == io.EOF {
-				// End of file reached - flush remaining batch and exit
+				// End of file reached - flush remaining batch
 				if err := flushBatch(); err != nil {
 					return messageCount, err
 				}
 				// Update progress bar to 100%
 				bar.Set64(fileSize)
+
+				// Check if we should loop
+				if loop {
+					// Reset to beginning of file
+					if err := reader.Reset(); err != nil {
+						return messageCount, fmt.Errorf("failed to reset file: %w", err)
+					}
+					loopIteration++
+					bytesRead = 0 // Reset bytes read counter
+					bar.Reset()
+					bar.Describe(progressBarDescription(loopIteration, loop))
+					continue // Continue the loop to read from beginning
+				}
+
+				// No more looping, exit
 				break
 			}
 			// Check if context was canceled

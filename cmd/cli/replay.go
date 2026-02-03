@@ -47,6 +47,11 @@ func replayCommand() *cli.Command {
 				Usage: "Create the topic if it doesn't exist",
 				Value: false,
 			},
+			&cli.BoolFlag{
+				Name:  "loop",
+				Usage: "Enable infinite looping - replay messages continuously until interrupted",
+				Value: false,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			brokers, err := resolveBrokers(cmd.StringSlice("broker"))
@@ -58,6 +63,7 @@ func replayCommand() *cli.Command {
 			rate := cmd.Int("rate")
 			preserveTimestamps := cmd.Bool("preserve-timestamps")
 			createTopic := cmd.Bool("create-topic")
+			loop := cmd.Bool("loop")
 
 			fmt.Printf("Replaying messages to topic '%s' on brokers %v\n", topic, brokers)
 			fmt.Printf("Input file: %s\n", input)
@@ -68,6 +74,9 @@ func replayCommand() *cli.Command {
 			}
 			if preserveTimestamps {
 				fmt.Println("Preserving original timestamps")
+			}
+			if loop {
+				fmt.Println("Looping: infinite")
 			}
 
 			// Create message file reader
@@ -81,7 +90,7 @@ func replayCommand() *cli.Command {
 			producer := pkg.NewProducer(brokers, topic, createTopic)
 			defer producer.Close()
 
-			messageCount, err := pkg.Replay(ctx, producer, reader, rate)
+			messageCount, err := pkg.Replay(ctx, producer, reader, rate, loop)
 			if err != nil {
 				return err
 			}
