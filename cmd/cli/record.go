@@ -44,9 +44,11 @@ func recordCommand() *cli.Command {
 				Usage:   "Output file path for recorded messages",
 				Value:   "messages.log",
 			},
-			&cli.BoolFlag{
-				Name:  "from-beginning",
-				Usage: "Start reading from the beginning of the topic",
+			&cli.Int64Flag{
+				Name:    "offset",
+				Aliases: []string{"O"},
+				Usage:   "Start reading from a specific offset (-1 to use current position, 0 to start from beginning)",
+				Value:   -1,
 			},
 			&cli.IntFlag{
 				Name:    "limit",
@@ -64,14 +66,24 @@ func recordCommand() *cli.Command {
 			groupID := cmd.String("group-id")
 			partition := cmd.Int("partition")
 			output := cmd.String("output")
-			fromBeginning := cmd.Bool("from-beginning")
+			offsetFlag := cmd.Int64("offset")
 			limit := cmd.Int("limit")
+
+			// Determine the offset to use
+			// If --offset is explicitly set (>= 0), use it
+			// Otherwise, use nil (start from current position)
+			var offset *int64
+			if offsetFlag >= 0 {
+				offset = &offsetFlag
+			}
 
 			fmt.Printf("Recording messages from topic '%s' on brokers %v\n", topic, brokers)
 			fmt.Printf("Consumer group: %s\n", groupID)
 			fmt.Printf("Output file: %s\n", output)
-			if fromBeginning {
-				fmt.Println("Starting from beginning of topic")
+			if offset != nil {
+				fmt.Printf("Starting from offset: %d\n", *offset)
+			} else {
+				fmt.Println("Starting from current position")
 			}
 			if limit > 0 {
 				fmt.Printf("Message limit: %d\n", limit)
@@ -85,7 +97,7 @@ func recordCommand() *cli.Command {
 				return err
 			}
 			defer writer.Close()
-			read, messageCount, err := pkg.Record(ctx, consumer, fromBeginning, writer, limit)
+			read, messageCount, err := pkg.Record(ctx, consumer, offset, writer, limit)
 			if err != nil {
 				return err
 			}

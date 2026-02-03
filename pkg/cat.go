@@ -6,9 +6,9 @@ import (
 	"io"
 )
 
-func Cat(ctx context.Context, input string, formatter func(msg *LogFileMessage) string) error {
-	// Create log file reader (preserve timestamps for display)
-	reader, err := NewLogFileReader(input, true)
+func Cat(ctx context.Context, input string, formatter func(msg *RecordedMessage) string) error {
+	// Create message file reader (preserve timestamps for display)
+	reader, err := NewMessageFileReader(input, true)
 	if err != nil {
 		return err
 	}

@@ -66,7 +66,7 @@ Record messages from a Kafka topic to a binary log file.
 - `--partition, -p`: Kafka partition to record from (default: 0)
 - `--group-id, -g`: Consumer group ID (default: "kafka-replay-record")
 - `--output, -o`: Output file path (default: "kafka-record.jsonl")
-- `--from-beginning`: Start reading from the beginning of the topic
+- `--offset, -O`: Start reading from a specific offset (-1 to use current position, 0 to start from beginning, default: -1)
 - `--limit, -l`: Maximum number of messages to record (0 for unlimited, default: 0)
 
 **Examples:**
@@ -77,7 +77,7 @@ Record all messages from the beginning of a topic:
 ./kafka-replay record \
   --broker localhost:19092 \
   --topic my-topic \
-  --from-beginning \
+  --offset 0 \
   --output backup.log
 ```
 
@@ -97,7 +97,7 @@ Record 50 messages from the beginning:
 ./kafka-replay record \
   --broker localhost:19092 \
   --topic my-topic \
-  --from-beginning \
+  --offset 0 \
   --output messages.log \
   --limit 50
 ```
@@ -253,7 +253,7 @@ docker-compose logs -f
      --broker localhost:19092 \
      --topic test-topic \
      --output messages.log \
-     --from-beginning
+     --offset 0
    ```
 3. **View recorded messages:**
 
@@ -278,7 +278,10 @@ docker-compose logs -f
 kafka-replay/
 ├── cmd/
 │   └── cli/
-│       └── main.go          # CLI entry point
+│       ├── main.go          # CLI entry point
+│       ├── record.go        # Record command implementation
+│       ├── replay.go        # Replay command implementation
+│       └── cat.go           # Cat command implementation
 ├── pkg/
 │   ├── kafka/
 │   │   ├── consumer.go      # Kafka consumer implementation
@@ -288,9 +291,13 @@ kafka-replay/
 │   ├── cat.go               # Message display logic
 │   └── kafka_exports.go     # Package exports
 ├── docker-compose.yml       # Local development environment
+├── dockerfile               # Docker build configuration
 ├── go.mod                   # Go module definition
+├── go.sum                   # Go module checksums
 ├── makefile                 # Build and test commands
-└── README.md                # This file
+├── LICENSE                  # License file
+├── .gitignore              # Git ignore rules
+└── README.md               # This file
 ```
 
 ### Building and Running
@@ -314,11 +321,6 @@ make cat       # Display messages
 ```bash
 make clean
 ```
-
-### Dependencies
-
-- [github.com/segmentio/kafka-go](https://github.com/segmentio/kafka-go): Kafka client library
-- [github.com/urfave/cli/v3](https://github.com/urfave/cli): CLI framework
 
 ### Contributing
 

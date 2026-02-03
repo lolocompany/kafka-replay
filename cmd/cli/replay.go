@@ -70,8 +70,8 @@ func replayCommand() *cli.Command {
 				fmt.Println("Preserving original timestamps")
 			}
 
-			// Create log file reader
-			reader, err := pkg.NewLogFileReader(input, preserveTimestamps)
+			// Create message file reader
+			reader, err := pkg.NewMessageFileReader(input, preserveTimestamps)
 			if err != nil {
 				return err
 			}

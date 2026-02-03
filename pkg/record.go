@@ -18,10 +18,10 @@ const (
 	SizeFieldSize   = 8 // int64 = 8 bytes
 )
 
-func Record(ctx context.Context, consumer *kafka.Consumer, fromBeginning bool, output io.WriteCloser, limit int) (int64, int64, error) {
-	// Set offset if we want to read from the beginning
-	if fromBeginning {
-		if err := consumer.SetOffsetFromBeginning(); err != nil {
+func Record(ctx context.Context, consumer *kafka.Consumer, offset *int64, output io.WriteCloser, limit int) (int64, int64, error) {
+	// Set offset if specified
+	if offset != nil {
+		if err := consumer.SetOffset(*offset); err != nil {
 			return 0, 0, err
 		}
 	}

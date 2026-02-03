@@ -50,6 +50,15 @@ func (c *Consumer) SetOffsetFromBeginning() error {
 	return err
 }
 
+// SetOffset sets the offset to a specific value
+func (c *Consumer) SetOffset(offset int64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := c.conn.Seek(offset, kafka.SeekStart)
+	return err
+}
+
 // ReadNextMessage reads the next complete message from Kafka
 // Returns the message value bytes, or an error if no message is available or context is canceled
 func (c *Consumer) ReadNextMessage(ctx context.Context) ([]byte, error) {

@@ -18,8 +18,8 @@ type catMessage struct {
 func catCommand() *cli.Command {
 	return &cli.Command{
 		Name:        "cat",
-		Usage:       "Display recorded messages from a log file",
-		Description: "Read and display messages from a binary log file in human-readable format.",
+		Usage:       "Display recorded messages from a message file",
+		Description: "Read and display messages from a binary message file in human-readable format.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "input",
@@ -31,7 +31,7 @@ func catCommand() *cli.Command {
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			input := cmd.String("input")
 
-			formatter := func(msg *pkg.LogFileMessage) string {
+			formatter := func(msg *pkg.RecordedMessage) string {
 				catMessage := catMessage{
 					Timestamp: msg.Timestamp.Format(time.RFC3339Nano),
 					Data:      string(msg.Data),

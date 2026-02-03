@@ -13,28 +13,28 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-// LogFileReader reads messages from a binary log file
-type LogFileReader struct {
+// MessageFileReader reads recorded Kafka messages from a binary file
+type MessageFileReader struct {
 	file               *os.File
 	timestampBuf       []byte
 	sizeBuf            []byte
 	preserveTimestamps bool
 }
 
-// LogFileMessage represents a message read from the log file
-type LogFileMessage struct {
+// RecordedMessage represents a message read from the recorded messages file
+type RecordedMessage struct {
 	Data      []byte    `json:"data"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// NewLogFileReader creates a new reader for binary log files
-func NewLogFileReader(input string, preserveTimestamps bool) (*LogFileReader, error) {
+// NewMessageFileReader creates a new reader for binary message files
+func NewMessageFileReader(input string, preserveTimestamps bool) (*MessageFileReader, error) {
 	file, err := os.Open(input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open input file: %w", err)
 	}
 
-	return &LogFileReader{
+	return &MessageFileReader{
 		file:               file,
 		timestampBuf:       make([]byte, TimestampSize),
 		sizeBuf:            make([]byte, SizeFieldSize),
@@ -42,9 +42,9 @@ func NewLogFileReader(input string, preserveTimestamps bool) (*LogFileReader, er
 	}, nil
 }
 
-// ReadNextMessage reads the next complete message from the log file
+// ReadNextMessage reads the next complete message from the recorded messages file
 // Returns the message data and timestamp, or an error if no message is available or EOF
-func (r *LogFileReader) ReadNextMessage(ctx context.Context) (*LogFileMessage, error) {
+func (r *MessageFileReader) ReadNextMessage(ctx context.Context) (*RecordedMessage, error) {
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
@@ -97,14 +97,14 @@ func (r *LogFileReader) ReadNextMessage(ctx context.Context) (*LogFileMessage, e
 		msgTime = time.Now()
 	}
 
-	return &LogFileMessage{
+	return &RecordedMessage{
 		Data:      messageData,
 		Timestamp: msgTime,
 	}, nil
 }
 
 // Close closes the underlying file
-func (r *LogFileReader) Close() error {
+func (r *MessageFileReader) Close() error {
 	if r.file != nil {
 		return r.file.Close()
 	}
@@ -112,7 +112,7 @@ func (r *LogFileReader) Close() error {
 }
 
 // FileSize returns the size of the underlying file
-func (r *LogFileReader) FileSize() (int64, error) {
+func (r *MessageFileReader) FileSize() (int64, error) {
 	if r.file == nil {
 		return 0, fmt.Errorf("file is nil")
 	}
@@ -130,7 +130,7 @@ const (
 	DefaultBatchBytes = 10 * 1024 * 1024
 )
 
-func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *LogFileReader, rate int) (int64, error) {
+func Replay(ctx context.Context, producer *kafkapkg.Producer, reader *MessageFileReader, rate int) (int64, error) {
 	// Get file size for progress bar
 	fileSize, err := reader.FileSize()
 	if err != nil {
