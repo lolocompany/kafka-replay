@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v0.6.0)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.6"
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (e.g., "v0.6.0")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Build for Linux AMD64
+        run: |
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/lolocompany/kafka-replay/cmd/kafka-replay.Version=${{ steps.version.outputs.version }}" -o kafka-replay-linux-amd64 ./cmd/kafka-replay
+
+      - name: Build for Linux ARM64
+        run: |
+          GOOS=linux GOARCH=arm64 go build -ldflags "-X github.com/lolocompany/kafka-replay/cmd/kafka-replay.Version=${{ steps.version.outputs.version }}" -o kafka-replay-linux-arm64 ./cmd/kafka-replay
+
+      - name: Build for macOS AMD64
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X github.com/lolocompany/kafka-replay/cmd/kafka-replay.Version=${{ steps.version.outputs.version }}" -o kafka-replay-darwin-amd64 ./cmd/kafka-replay
+
+      - name: Build for macOS ARM64
+        run: |
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X github.com/lolocompany/kafka-replay/cmd/kafka-replay.Version=${{ steps.version.outputs.version }}" -o kafka-replay-darwin-arm64 ./cmd/kafka-replay
+
+      - name: Build for Windows AMD64
+        run: |
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X github.com/lolocompany/kafka-replay/cmd/kafka-replay.Version=${{ steps.version.outputs.version }}" -o kafka-replay-windows-amd64.exe ./cmd/kafka-replay
+
+      - name: Build for Windows ARM64
+        run: |
+          GOOS=windows GOARCH=arm64 go build -ldflags "-X github.com/lolocompany/kafka-replay/cmd/kafka-replay.Version=${{ steps.version.outputs.version }}" -o kafka-replay-windows-arm64.exe ./cmd/kafka-replay
+
+      - name: Create checksums
+        run: |
+          sha256sum kafka-replay-* > checksums.txt
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            Release ${{ steps.version.outputs.version }}
+
+            ## Assets
+            - Linux AMD64
+            - Linux ARM64
+            - macOS AMD64 (Intel)
+            - macOS ARM64 (Apple Silicon)
+            - Windows AMD64
+            - Windows ARM64
+          files: |
+            kafka-replay-linux-amd64
+            kafka-replay-linux-arm64
+            kafka-replay-darwin-amd64
+            kafka-replay-darwin-arm64
+            kafka-replay-windows-amd64.exe
+            kafka-replay-windows-arm64.exe
+            checksums.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
