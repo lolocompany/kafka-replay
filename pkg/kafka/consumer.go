@@ -231,7 +231,11 @@ func NewKafkaConsumer(ctx context.Context, brokers []string, topic string, parti
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to any broker: %w", err)
+		// The error may show a different broker address than the one provided because
+		// Kafka returns the leader broker's advertised address in metadata, and the
+		// client tries to connect to that address. If the advertised address is
+		// unreachable, the error will show the leader's address, not the initial broker.
+		return nil, fmt.Errorf("failed to connect to any broker (tried: %v). Note: Kafka may return a different broker address (leader) in metadata that must also be reachable: %w", brokers, err)
 	}
 
 	return &Consumer{
