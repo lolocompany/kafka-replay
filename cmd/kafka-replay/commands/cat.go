@@ -32,10 +32,10 @@ func CatCommand() *cli.Command {
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			input := cmd.String("input")
 
-			formatter := func(msg *pkg.RecordedMessage) string {
+			formatter := func(timestamp time.Time, data []byte) string {
 				catMessage := catMessage{
-					Timestamp: msg.Timestamp.Format(time.RFC3339Nano),
-					Data:      string(msg.Data),
+					Timestamp: timestamp.Format(time.RFC3339Nano),
+					Data:      string(data),
 				}
 				jsonMessage, err := json.Marshal(catMessage)
 				if err != nil {
@@ -53,10 +53,9 @@ func CatCommand() *cli.Command {
 
 			fmt.Printf("Reading messages from: %s\n", input)
 			if err := pkg.Cat(ctx, pkg.CatConfig{
-				Reader:       file,
-				TimeProvider: pkg.RealTimeProvider{},
-				Formatter:    formatter,
-				Output:       os.Stdout,
+				Reader:    file,
+				Formatter: formatter,
+				Output:    os.Stdout,
 			}); err != nil {
 				return err
 			}

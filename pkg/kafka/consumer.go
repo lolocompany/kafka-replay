@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -47,7 +48,7 @@ func (c *Consumer) Close() error {
 
 // ReadNextMessage reads the next complete message from Kafka
 // Returns the message value bytes, or an error if no message is available or context is canceled
-func (c *Consumer) ReadNextMessage(ctx context.Context) ([]byte, error) {
+func (c *Consumer) ReadNextMessage(ctx context.Context) (time.Time, []byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -69,9 +70,9 @@ func (c *Consumer) ReadNextMessage(ctx context.Context) ([]byte, error) {
 
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return time.Time{}, nil, ctx.Err()
 		case err := <-errChan:
-			return nil, err
+			return time.Time{}, nil, err
 		case b := <-batchChan:
 			c.batch = b
 		}
@@ -86,16 +87,16 @@ func (c *Consumer) ReadNextMessage(ctx context.Context) ([]byte, error) {
 			c.batch.Close()
 			c.batch = nil
 		}
-		return nil, err
+		return time.Time{}, nil, err
 	}
 
-	// Return a copy of the message value
+	// Return the message timestamp and value
 	value := make([]byte, len(msg.Value))
 	copy(value, msg.Value)
-	return value, nil
+	return msg.Time, value, nil
 }
 
-func NewKafkaConsumer(ctx context.Context, brokers []string, topic string, partition int) (*Consumer, error) {
+func NewConsumer(ctx context.Context, brokers []string, topic string, partition int) (*Consumer, error) {
 	// DialLeader expects a single broker address - it will discover the leader from metadata
 	// Try each broker until one works
 	var conn *kafka.Conn

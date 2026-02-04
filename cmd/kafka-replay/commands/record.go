@@ -7,6 +7,7 @@ import (
 
 	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
 	"github.com/lolocompany/kafka-replay/pkg"
+	"github.com/lolocompany/kafka-replay/pkg/kafka"
 	"github.com/urfave/cli/v3"
 )
 
@@ -89,7 +90,7 @@ func RecordCommand() *cli.Command {
 			if limit > 0 {
 				fmt.Printf("Message limit: %d\n", limit)
 			}
-			consumer, err := pkg.NewKafkaConsumer(ctx, brokers, topic, partition)
+			consumer, err := kafka.NewConsumer(ctx, brokers, topic, partition)
 			if err != nil {
 				return err
 			}
@@ -106,11 +107,10 @@ func RecordCommand() *cli.Command {
 			writer := util.CountingWriter(fileWriter, spinner)
 
 			read, messageCount, err := pkg.Record(ctx, pkg.RecordConfig{
-				Consumer:     consumer,
-				Offset:       offset,
-				Output:       writer,
-				Limit:        limit,
-				TimeProvider: pkg.RealTimeProvider{},
+				Consumer: consumer,
+				Offset:   offset,
+				Output:   writer,
+				Limit:    limit,
 			})
 
 			if err != nil {

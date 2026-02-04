@@ -7,6 +7,8 @@ import (
 
 	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
 	"github.com/lolocompany/kafka-replay/pkg"
+	"github.com/lolocompany/kafka-replay/pkg/kafka"
+	"github.com/lolocompany/kafka-replay/pkg/transcoder"
 	"github.com/urfave/cli/v3"
 )
 
@@ -94,16 +96,19 @@ func ReplayCommand() *cli.Command {
 			// Wrap file reader to count bytes for spinner
 			countingReader := util.CountingReadSeeker(file, spinner)
 
-			// Create message file reader
-			reader := pkg.NewMessageFileReader(countingReader, preserveTimestamps, pkg.RealTimeProvider{})
+			// Create message decoder
+			decoder, err := transcoder.NewDecodeReader(countingReader, preserveTimestamps)
+			if err != nil {
+				return fmt.Errorf("failed to create message decoder: %w", err)
+			}
 
 			// Create Kafka producer
-			producer := pkg.NewProducer(brokers, topic, createTopic)
+			producer := kafka.NewProducer(brokers, topic, createTopic)
 			defer producer.Close()
 
 			messageCount, err := pkg.Replay(ctx, pkg.ReplayConfig{
 				Producer:  producer,
-				Reader:    reader,
+				Decoder:   decoder,
 				Rate:      rate,
 				Loop:      loop,
 				LogWriter: os.Stderr,

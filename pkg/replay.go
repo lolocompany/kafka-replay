@@ -9,6 +9,7 @@ import (
 	"time"
 
 	kafkapkg "github.com/lolocompany/kafka-replay/pkg/kafka"
+	"github.com/lolocompany/kafka-replay/pkg/transcoder"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -22,7 +23,7 @@ const (
 // ReplayConfig holds configuration for the Replay function
 type ReplayConfig struct {
 	Producer  *kafkapkg.Producer
-	Reader    *MessageFileReader
+	Decoder   *transcoder.DecodeReader
 	Rate      int
 	Loop      bool
 	LogWriter io.Writer
@@ -32,8 +33,8 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 	if cfg.Producer == nil {
 		return 0, errors.New("producer is required")
 	}
-	if cfg.Reader == nil {
-		return 0, errors.New("reader is required")
+	if cfg.Decoder == nil {
+		return 0, errors.New("decoder is required")
 	}
 	if cfg.LogWriter == nil {
 		cfg.LogWriter = os.Stderr
@@ -63,7 +64,7 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		}
 
 		// Read next complete message
-		msg, err := cfg.Reader.ReadNextMessage(ctx)
+		timestamp, data, err := cfg.Decoder.Read()
 		if err != nil {
 			if err == io.EOF {
 				// End of file reached - flush remaining batch
@@ -73,7 +74,7 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 
 				// Check if we should loop
 				if cfg.Loop {
-					if err := cfg.Reader.Reset(); err != nil {
+					if err := cfg.Decoder.Reset(); err != nil {
 						return messageCount, err
 					}
 					continue
@@ -107,11 +108,11 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 
 		// Add message to batch
 		kafkaMsg := kafka.Message{
-			Value: msg.Data,
-			Time:  msg.Timestamp,
+			Value: data,
+			Time:  timestamp,
 		}
 		batch = append(batch, kafkaMsg)
-		batchBytes += int64(len(msg.Data))
+		batchBytes += int64(len(data))
 
 		messageCount++
 
