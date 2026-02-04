@@ -111,6 +111,7 @@ func RecordCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
+			defer consumer.Close()
 			fileWriter, err := os.Create(output)
 			if err != nil {
 				return err
