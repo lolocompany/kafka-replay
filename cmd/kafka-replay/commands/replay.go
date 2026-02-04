@@ -56,6 +56,12 @@ func ReplayCommand() *cli.Command {
 				Usage: "Enable infinite looping - replay messages continuously until interrupted",
 				Value: false,
 			},
+			&cli.IntFlag{
+				Name:    "partition",
+				Aliases: []string{"p"},
+				Usage:   "Target partition to write messages to (default: auto-assign)",
+				Value:   -1,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
@@ -68,6 +74,12 @@ func ReplayCommand() *cli.Command {
 			preserveTimestamps := cmd.Bool("preserve-timestamps")
 			createTopic := cmd.Bool("create-topic")
 			loop := cmd.Bool("loop")
+			partitionFlag := cmd.Int("partition")
+
+			var partition *int
+			if partitionFlag >= 0 {
+				partition = &partitionFlag
+			}
 
 			fmt.Fprintf(os.Stderr, "Replaying messages to topic '%s' on brokers %v\n", topic, brokers)
 			fmt.Fprintf(os.Stderr, "Input file: %s\n", input)
@@ -81,6 +93,9 @@ func ReplayCommand() *cli.Command {
 			}
 			if loop {
 				fmt.Fprintln(os.Stderr, "Looping: infinite")
+			}
+			if partition != nil {
+				fmt.Fprintf(os.Stderr, "Target partition: %d\n", *partition)
 			}
 
 			// Open input file
@@ -111,6 +126,7 @@ func ReplayCommand() *cli.Command {
 				Decoder:   decoder,
 				Rate:      rate,
 				Loop:      loop,
+				Partition: partition,
 				LogWriter: os.Stderr,
 			})
 

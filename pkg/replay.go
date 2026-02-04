@@ -26,6 +26,7 @@ type ReplayConfig struct {
 	Decoder   *transcoder.DecodeReader
 	Rate      int
 	Loop      bool
+	Partition *int // Optional partition to write to (nil for auto-assignment)
 	LogWriter io.Writer
 }
 
@@ -110,6 +111,10 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		kafkaMsg := kafka.Message{
 			Value: data,
 			Time:  timestamp,
+		}
+		// Set partition if specified in config
+		if cfg.Partition != nil {
+			kafkaMsg.Partition = *cfg.Partition
 		}
 		batch = append(batch, kafkaMsg)
 		batchBytes += int64(len(data))
