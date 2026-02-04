@@ -51,7 +51,7 @@ func CatCommand() *cli.Command {
 			}
 			defer file.Close()
 
-			fmt.Printf("Reading messages from: %s\n", input)
+			fmt.Fprintf(os.Stderr, "Reading messages from: %s\n", input)
 			if err := pkg.Cat(ctx, pkg.CatConfig{
 				Reader:    file,
 				Formatter: formatter,

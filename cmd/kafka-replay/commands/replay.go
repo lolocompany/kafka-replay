@@ -69,18 +69,18 @@ func ReplayCommand() *cli.Command {
 			createTopic := cmd.Bool("create-topic")
 			loop := cmd.Bool("loop")
 
-			fmt.Printf("Replaying messages to topic '%s' on brokers %v\n", topic, brokers)
-			fmt.Printf("Input file: %s\n", input)
+			fmt.Fprintf(os.Stderr, "Replaying messages to topic '%s' on brokers %v\n", topic, brokers)
+			fmt.Fprintf(os.Stderr, "Input file: %s\n", input)
 			if rate > 0 {
-				fmt.Printf("Rate limit: %d messages/second\n", rate)
+				fmt.Fprintf(os.Stderr, "Rate limit: %d messages/second\n", rate)
 			} else {
-				fmt.Println("Rate limit: maximum speed")
+				fmt.Fprintln(os.Stderr, "Rate limit: maximum speed")
 			}
 			if preserveTimestamps {
-				fmt.Println("Preserving original timestamps")
+				fmt.Fprintln(os.Stderr, "Preserving original timestamps")
 			}
 			if loop {
-				fmt.Println("Looping: infinite")
+				fmt.Fprintln(os.Stderr, "Looping: infinite")
 			}
 
 			// Open input file
@@ -121,7 +121,7 @@ func ReplayCommand() *cli.Command {
 			// Close spinner before printing final message to avoid double display
 			spinner.Close()
 
-			fmt.Printf("Successfully replayed %d messages to topic '%s'\n", messageCount, topic)
+			fmt.Fprintf(os.Stderr, "Successfully replayed %d messages to topic '%s'\n", messageCount, topic)
 			return nil
 		},
 	}

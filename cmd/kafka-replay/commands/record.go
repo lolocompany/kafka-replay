@@ -79,16 +79,16 @@ func RecordCommand() *cli.Command {
 				offset = &offsetFlag
 			}
 
-			fmt.Printf("Recording messages from topic '%s' on brokers %v\n", topic, brokers)
-			fmt.Printf("Consumer group: %s\n", groupID)
-			fmt.Printf("Output file: %s\n", output)
+			fmt.Fprintf(os.Stderr, "Recording messages from topic '%s' on brokers %v\n", topic, brokers)
+			fmt.Fprintf(os.Stderr, "Consumer group: %s\n", groupID)
+			fmt.Fprintf(os.Stderr, "Output file: %s\n", output)
 			if offset != nil {
-				fmt.Printf("Starting from offset: %d\n", *offset)
+				fmt.Fprintf(os.Stderr, "Starting from offset: %d\n", *offset)
 			} else {
-				fmt.Println("Starting from current position")
+				fmt.Fprintln(os.Stderr, "Starting from current position")
 			}
 			if limit > 0 {
-				fmt.Printf("Message limit: %d\n", limit)
+				fmt.Fprintf(os.Stderr, "Message limit: %d\n", limit)
 			}
 			consumer, err := kafka.NewConsumer(ctx, brokers, topic, partition)
 			if err != nil {
@@ -120,7 +120,7 @@ func RecordCommand() *cli.Command {
 			// Close spinner before printing final message to avoid double display
 			spinner.Close()
 
-			fmt.Printf("Recorded %d messages (%d bytes)\n", messageCount, read)
+			fmt.Fprintf(os.Stderr, "Recorded %d messages (%d bytes)\n", messageCount, read)
 			return nil
 		},
 	}
