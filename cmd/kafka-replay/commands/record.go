@@ -58,6 +58,12 @@ func RecordCommand() *cli.Command {
 				Usage:   "Maximum number of messages to record (0 for unlimited)",
 				Value:   0,
 			},
+			&cli.DurationFlag{
+				Name:    "timeout",
+				Aliases: []string{"T"},
+				Usage:   "Timeout for the recording operation (e.g., 5m, 30s). 0 means no timeout",
+				Value:   0,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
@@ -70,6 +76,14 @@ func RecordCommand() *cli.Command {
 			output := cmd.String("output")
 			offsetFlag := cmd.Int64("offset")
 			limit := cmd.Int("limit")
+			timeout := cmd.Duration("timeout")
+
+			// Apply timeout if specified
+			if timeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, timeout)
+				defer cancel()
+			}
 
 			// Determine the offset to use
 			// If --offset is explicitly set (>= 0), use it
@@ -89,6 +103,9 @@ func RecordCommand() *cli.Command {
 			}
 			if limit > 0 {
 				fmt.Fprintf(os.Stderr, "Message limit: %d\n", limit)
+			}
+			if timeout > 0 {
+				fmt.Fprintf(os.Stderr, "Timeout: %v\n", timeout)
 			}
 			consumer, err := kafka.NewConsumer(ctx, brokers, topic, partition)
 			if err != nil {
