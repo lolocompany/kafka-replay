@@ -50,3 +50,40 @@ func Cat(ctx context.Context, cfg CatConfig) error {
 
 	return nil
 }
+
+// CatRaw reads messages from a reader and writes only the raw data bytes to the output
+func CatRaw(ctx context.Context, reader io.ReadSeeker, output io.Writer) error {
+	decoder, err := transcoder.NewDecodeReader(reader, false)
+	if err != nil {
+		return err
+	}
+	defer decoder.Close()
+
+	for {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// Read next complete message
+		_, data, err := decoder.Read()
+		if err != nil {
+			if err == io.EOF {
+				// End of file reached
+				break
+			}
+			return err
+		}
+
+		// Write raw data directly
+		if output != nil {
+			if _, err := output.Write(data); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}

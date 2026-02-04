@@ -28,21 +28,16 @@ func CatCommand() *cli.Command {
 				Usage:    "Input file path containing recorded messages",
 				Required: true,
 			},
+			&cli.BoolFlag{
+				Name:    "raw",
+				Aliases: []string{"r"},
+				Usage:   "Output only the raw message data, excluding timestamps and JSON formatting",
+				Value:   false,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			input := cmd.String("input")
-
-			formatter := func(timestamp time.Time, data []byte) string {
-				catMessage := catMessage{
-					Timestamp: timestamp.Format(time.RFC3339Nano),
-					Data:      string(data),
-				}
-				jsonMessage, err := json.Marshal(catMessage)
-				if err != nil {
-					return fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
-				}
-				return string(jsonMessage)
-			}
+			raw := cmd.Bool("raw")
 
 			// Open input file
 			file, err := os.Open(input)
@@ -52,12 +47,33 @@ func CatCommand() *cli.Command {
 			defer file.Close()
 
 			fmt.Fprintf(os.Stderr, "Reading messages from: %s\n", input)
-			if err := pkg.Cat(ctx, pkg.CatConfig{
-				Reader:    file,
-				Formatter: formatter,
-				Output:    os.Stdout,
-			}); err != nil {
-				return err
+
+			if raw {
+				// Raw mode: output only the data bytes directly
+				if err := pkg.CatRaw(ctx, file, os.Stdout); err != nil {
+					return err
+				}
+			} else {
+				// JSON mode: format as JSON with timestamp
+				formatter := func(timestamp time.Time, data []byte) string {
+					catMessage := catMessage{
+						Timestamp: timestamp.Format(time.RFC3339Nano),
+						Data:      string(data),
+					}
+					jsonMessage, err := json.Marshal(catMessage)
+					if err != nil {
+						return fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
+					}
+					return string(jsonMessage)
+				}
+
+				if err := pkg.Cat(ctx, pkg.CatConfig{
+					Reader:    file,
+					Formatter: formatter,
+					Output:    os.Stdout,
+				}); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

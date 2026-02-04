@@ -198,26 +198,35 @@ Display recorded messages from a message file in human-readable format.
 **Options:**
 
 - `--input, -i`: Input file path containing recorded messages (required)
+- `--raw`: Output only the raw message data, excluding timestamps and JSON formatting
 
-**Example:**
+**Examples:**
+
+Display messages as JSON (default):
 
 ```bash
 ./kafka-replay cat --input messages.log
 ```
 
-**Output format:**
-
-Each message is displayed as a JSON object on a single line:
+Output format: Each message is displayed as a JSON object on a single line:
 
 ```json
 {"timestamp":"2026-02-02T10:15:30.123456789Z","data":"{\"message\":\"test\"}"}
 {"timestamp":"2026-02-02T10:15:31.234567890Z","data":"{\"message\":\"another\"}"}
 ```
 
-The output format includes:
+The JSON output format includes:
 
 - `timestamp`: ISO 8601 timestamp (RFC3339Nano format) when the message was recorded
 - `data`: The message content as a string
+
+Display raw message data only:
+
+```bash
+./kafka-replay cat --input messages.log --raw
+```
+
+When `--raw` is used, only the raw message bytes are written to stdout, with no timestamps or JSON formatting. This is useful for extracting message content for further processing or piping to other tools.
 
 ### File Format
 
