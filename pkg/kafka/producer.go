@@ -2,15 +2,13 @@ package kafka
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/segmentio/kafka-go"
 )
 
 type Producer struct {
-	writer  *kafka.Writer
-	brokers []string
-	topic   string
+	writer *kafka.Writer
 }
 
 func NewProducer(brokers []string, topic string, allowAutoTopicCreation bool) *Producer {
@@ -20,18 +18,7 @@ func NewProducer(brokers []string, topic string, allowAutoTopicCreation bool) *P
 			Topic:                  topic,
 			AllowAutoTopicCreation: allowAutoTopicCreation,
 		},
-		brokers: brokers,
-		topic:   topic,
 	}
-}
-
-// WriteMessage writes a single message to Kafka
-func (p *Producer) WriteMessage(ctx context.Context, value []byte, timestamp time.Time) error {
-	msg := kafka.Message{
-		Value: value,
-		Time:  timestamp,
-	}
-	return p.writer.WriteMessages(ctx, msg)
 }
 
 // WriteMessages writes multiple messages to Kafka
@@ -41,8 +28,11 @@ func (p *Producer) WriteMessages(ctx context.Context, messages ...kafka.Message)
 
 // Close closes the underlying writer
 func (p *Producer) Close() error {
-	if p.writer != nil {
-		return p.writer.Close()
+	if p.writer == nil {
+		return nil
+	}
+	if err := p.writer.Close(); err != nil {
+		return fmt.Errorf("failed to close producer: %w", err)
 	}
 	return nil
 }

@@ -1,15 +1,16 @@
-package main
+package commands
 
 import (
 	"context"
 	"fmt"
 	"os"
 
+	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
 	"github.com/lolocompany/kafka-replay/pkg"
 	"github.com/urfave/cli/v3"
 )
 
-func replayCommand() *cli.Command {
+func ReplayCommand() *cli.Command {
 	return &cli.Command{
 		Name:        "replay",
 		Usage:       "Replay recorded messages to a Kafka topic",
@@ -55,7 +56,7 @@ func replayCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			brokers, err := resolveBrokers(cmd.StringSlice("broker"))
+			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
 			if err != nil {
 				return err
 			}
@@ -87,33 +88,34 @@ func replayCommand() *cli.Command {
 			}
 			defer file.Close()
 
+			// Create progress spinner
+			spinner := util.NewProgressSpinner("Replaying messages")
+
+			// Wrap file reader to count bytes for spinner
+			countingReader := util.CountingReadSeeker(file, spinner)
+
 			// Create message file reader
-			reader := pkg.NewMessageFileReader(file, preserveTimestamps, pkg.RealTimeProvider{})
-
-			// Get file size for progress bar
-			fileSize, err := reader.FileSize()
-			if err != nil {
-				return fmt.Errorf("failed to get file size: %w", err)
-			}
-
-			// Create progress reporter
-			progressReporter := NewReplayProgressReporter(fileSize, loop)
+			reader := pkg.NewMessageFileReader(countingReader, preserveTimestamps, pkg.RealTimeProvider{})
 
 			// Create Kafka producer
 			producer := pkg.NewProducer(brokers, topic, createTopic)
 			defer producer.Close()
 
 			messageCount, err := pkg.Replay(ctx, pkg.ReplayConfig{
-				Producer:        producer,
-				Reader:           reader,
-				Rate:             rate,
-				Loop:             loop,
-				LogWriter:        os.Stderr,
-				ProgressReporter: progressReporter,
+				Producer:  producer,
+				Reader:    reader,
+				Rate:      rate,
+				Loop:      loop,
+				LogWriter: os.Stderr,
 			})
+
 			if err != nil {
 				return err
 			}
+
+			// Close spinner before printing final message to avoid double display
+			spinner.Close()
+
 			fmt.Printf("Successfully replayed %d messages to topic '%s'\n", messageCount, topic)
 			return nil
 		},

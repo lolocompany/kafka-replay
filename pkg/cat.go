@@ -17,8 +17,6 @@ func Cat(ctx context.Context, cfg CatConfig) error {
 	msgReader := NewMessageFileReader(cfg.Reader, true, cfg.TimeProvider)
 	defer msgReader.Close()
 
-	var messageCount int64
-
 	for {
 		// Check context cancellation
 		select {
@@ -42,8 +40,6 @@ func Cat(ctx context.Context, cfg CatConfig) error {
 		if cfg.Output != nil {
 			fmt.Fprintf(cfg.Output, "%s\n", formattedMessage)
 		}
-
-		messageCount++
 	}
 
 	return nil

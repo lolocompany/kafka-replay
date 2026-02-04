@@ -1,15 +1,16 @@
-package main
+package commands
 
 import (
 	"context"
 	"fmt"
 	"os"
 
+	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
 	"github.com/lolocompany/kafka-replay/pkg"
 	"github.com/urfave/cli/v3"
 )
 
-func recordCommand() *cli.Command {
+func RecordCommand() *cli.Command {
 	return &cli.Command{
 		Name:        "record",
 		Usage:       "Record messages from a Kafka topic",
@@ -58,7 +59,7 @@ func recordCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			brokers, err := resolveBrokers(cmd.StringSlice("broker"))
+			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
 			if err != nil {
 				return err
 			}
@@ -92,26 +93,33 @@ func recordCommand() *cli.Command {
 			if err != nil {
 				return err
 			}
-			writer, err := os.Create(output)
+			fileWriter, err := os.Create(output)
 			if err != nil {
 				return err
 			}
-			defer writer.Close()
+			defer fileWriter.Close()
 
-			// Create progress reporter
-			progressReporter := NewRecordProgressReporter(limit)
+			// Create progress spinner
+			spinner := util.NewProgressSpinner("Recording messages")
+
+			// Wrap writer to count bytes for spinner
+			writer := util.CountingWriter(fileWriter, spinner)
 
 			read, messageCount, err := pkg.Record(ctx, pkg.RecordConfig{
-				Consumer:        consumer,
-				Offset:          offset,
-				Output:          writer,
-				Limit:           limit,
-				TimeProvider:    pkg.RealTimeProvider{},
-				ProgressReporter: progressReporter,
+				Consumer:     consumer,
+				Offset:       offset,
+				Output:       writer,
+				Limit:        limit,
+				TimeProvider: pkg.RealTimeProvider{},
 			})
+
 			if err != nil {
 				return err
 			}
+
+			// Close spinner before printing final message to avoid double display
+			spinner.Close()
+
 			fmt.Printf("Recorded %d messages (%d bytes)\n", messageCount, read)
 			return nil
 		},

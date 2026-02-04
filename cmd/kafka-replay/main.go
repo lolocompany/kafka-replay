@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	
+
 	"log"
 	"os"
-	
 
+	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/commands"
 	"github.com/urfave/cli/v3"
 )
 
@@ -16,10 +16,10 @@ func main() {
 		Usage:       "A utility tool for recording and replaying Kafka messages",
 		Description: "Record messages from Kafka topics or replay previously recorded messages back to Kafka topics.",
 		Commands: []*cli.Command{
-			recordCommand(),
-			replayCommand(),
-			catCommand(),
-			versionCommand(),
+			commands.RecordCommand(),
+			commands.ReplayCommand(),
+			commands.CatCommand(),
+			commands.VersionCommand(),
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			// Show help when no command is provided

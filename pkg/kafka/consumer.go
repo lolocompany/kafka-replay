@@ -9,32 +9,21 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// Consumer wraps a low-level kafka.Conn for reading messages from a specific partition.
+// Unlike Producer which uses kafka.Writer (a high-level abstraction), Consumer needs
+// direct connection access to:
+//   - Seek to specific offsets (SetOffset)
+//   - Read batches directly from a partition (ReadBatch)
+//   - Maintain precise control over partition selection
+//
+// kafka.Writer handles connection pooling, routing, and retries automatically, while
+// Consumer uses DialLeader which handles leader discovery but requires managing the
+// initial broker connection. The low-level conn is needed for offset management and
+// partition-specific operations.
 type Consumer struct {
 	conn  *kafka.Conn
 	batch *kafka.Batch
 	mu    sync.Mutex
-}
-
-func (c *Consumer) Consume(ctx context.Context, fromBeginning bool) (io.ReadCloser, error) {
-	// Note: topic and groupID are accepted for API compatibility but not used here
-	// since the connection is already established for a specific topic in NewKafkaConsumer
-
-	// Set offset if we want to read from the beginning
-	if fromBeginning {
-		firstOffset, _, err := c.conn.ReadOffsets()
-		if err != nil {
-			return nil, err
-		}
-		if _, err := c.conn.Seek(firstOffset, kafka.SeekStart); err != nil {
-			return nil, err
-		}
-	}
-
-	// Create a message reader that reads continuously
-	return &messageReader{
-		conn: c.conn,
-		ctx:  ctx,
-	}, nil
 }
 
 // SetOffset sets the offset to a specific value
@@ -44,6 +33,16 @@ func (c *Consumer) SetOffset(offset int64) error {
 
 	_, err := c.conn.Seek(offset, kafka.SeekStart)
 	return err
+}
+
+func (c *Consumer) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+	if err := c.conn.Close(); err != nil {
+		return fmt.Errorf("failed to close consumer: %w", err)
+	}
+	return nil
 }
 
 // ReadNextMessage reads the next complete message from Kafka
@@ -94,116 +93,6 @@ func (c *Consumer) ReadNextMessage(ctx context.Context) ([]byte, error) {
 	value := make([]byte, len(msg.Value))
 	copy(value, msg.Value)
 	return value, nil
-}
-
-// messageReader is a custom io.Reader that reads Kafka messages continuously
-type messageReader struct {
-	conn  *kafka.Conn
-	ctx   context.Context
-	batch *kafka.Batch
-	buf   []byte // buffer for current message that wasn't fully read
-	mu    sync.Mutex
-}
-
-func (r *messageReader) Read(p []byte) (n int, err error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// Check if context is canceled
-	select {
-	case <-r.ctx.Done():
-		return 0, r.ctx.Err()
-	default:
-	}
-
-	// First, try to read from buffer if we have leftover data
-	if len(r.buf) > 0 {
-		copied := copy(p, r.buf)
-		r.buf = r.buf[copied:]
-		return copied, nil
-	}
-
-	// If we don't have a batch, read a new one
-	if r.batch == nil {
-		// ReadBatch blocks until messages are available, so we need to handle context cancellation
-		// by running it in a goroutine and using a channel
-		batchChan := make(chan *kafka.Batch, 1)
-		errChan := make(chan error, 1)
-
-		go func() {
-			// ReadBatch blocks until at least minBytes are available or maxBytes is reached
-			// minBytes=1 means read at least 1 byte, maxBytes=10MB for reasonable batch size
-			batch := r.conn.ReadBatch(1, 10*1024*1024)
-			select {
-			case <-r.ctx.Done():
-				batch.Close()
-				errChan <- r.ctx.Err()
-			case batchChan <- batch:
-			}
-		}()
-
-		select {
-		case <-r.ctx.Done():
-			return 0, r.ctx.Err()
-		case err := <-errChan:
-			return 0, err
-		case batch := <-batchChan:
-			r.batch = batch
-		}
-	}
-
-	// Read the next message from the batch
-	msg, err := r.batch.ReadMessage()
-	if err != nil {
-		// If we got an error, close the batch
-		r.batch.Close()
-		r.batch = nil
-
-		// Check if it's EOF (end of batch) or context cancellation
-		if err == io.EOF {
-			// End of batch, try reading a new batch on next call
-			// But first check if we have buffered data
-			if len(r.buf) > 0 {
-				copied := copy(p, r.buf)
-				r.buf = r.buf[copied:]
-				return copied, nil
-			}
-			return 0, nil
-		}
-		if r.ctx.Err() != nil {
-			return 0, r.ctx.Err()
-		}
-		return 0, err
-	}
-
-	// Copy message value to the buffer
-	copied := copy(p, msg.Value)
-
-	// If we couldn't copy everything, store the remainder in buffer
-	// Make sure to copy the data, not just create a slice reference
-	if copied < len(msg.Value) {
-		// Ensure we have enough capacity, then copy the remainder
-		remainder := msg.Value[copied:]
-		if cap(r.buf) < len(remainder) {
-			r.buf = make([]byte, len(remainder))
-		} else {
-			r.buf = r.buf[:len(remainder)]
-		}
-		copy(r.buf, remainder)
-	}
-
-	return copied, nil
-}
-
-func (r *messageReader) Close() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.batch != nil {
-		r.batch.Close()
-		r.batch = nil
-	}
-	return nil // Don't close the connection here, let the caller manage it
 }
 
 func NewKafkaConsumer(ctx context.Context, brokers []string, topic string, partition int) (*Consumer, error) {

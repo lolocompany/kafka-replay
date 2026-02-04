@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type catMessage struct {
 	Data      string `json:"data"`
 }
 
-func catCommand() *cli.Command {
+func CatCommand() *cli.Command {
 	return &cli.Command{
 		Name:        "cat",
 		Usage:       "Display recorded messages from a message file",

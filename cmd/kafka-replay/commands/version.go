@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func getVersion() string {
 	return "unknown"
 }
 
-func versionCommand() *cli.Command {
+func VersionCommand() *cli.Command {
 	return &cli.Command{
 		Name:        "version",
 		Usage:       "Print version information",

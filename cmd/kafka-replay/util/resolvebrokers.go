@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 // resolveBrokers resolves broker addresses from command flags or environment variable.
 // Returns the broker addresses and an error if neither is provided.
-func resolveBrokers(flagBrokers []string) ([]string, error) {
+func ResolveBrokers(flagBrokers []string) ([]string, error) {
 	if len(flagBrokers) > 0 {
 		return flagBrokers, nil
 	}
