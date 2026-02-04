@@ -2,7 +2,10 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"runtime"
 	"runtime/debug"
 
 	"github.com/urfave/cli/v3"
@@ -46,9 +49,36 @@ func VersionCommand() *cli.Command {
 	return &cli.Command{
 		Name:        "version",
 		Usage:       "Print version information",
-		Description: "Display the current version of kafka-replay.",
+		Description: "Display the current version of kafka-replay in JSON format with build information.",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			_, err := fmt.Printf("kafka-replay version %s\n", getVersion())
+			version := getVersion()
+			buildInfo, _ := debug.ReadBuildInfo()
+
+			versionInfo := map[string]interface{}{
+				"version": version,
+			}
+
+			if buildInfo != nil {
+				versionInfo["go_version"] = runtime.Version()
+				versionInfo["go_os"] = runtime.GOOS
+				versionInfo["go_arch"] = runtime.GOARCH
+
+				buildSettings := make(map[string]string)
+				for _, setting := range buildInfo.Settings {
+					if setting.Key == "vcs.revision" || setting.Key == "vcs.time" || setting.Key == "vcs.modified" {
+						buildSettings[setting.Key] = setting.Value
+					}
+				}
+				if len(buildSettings) > 0 {
+					versionInfo["build"] = buildSettings
+				}
+			}
+
+			jsonBytes, err := json.MarshalIndent(versionInfo, "", "  ")
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(os.Stderr, "%s\n", jsonBytes)
 			return err
 		},
 	}
