@@ -2,6 +2,10 @@
 build: clean
 	go build -o kafka-replay ./cmd/kafka-replay
 
+.PHONY: test
+test:
+	go test ./pkg/transcoder/...
+
 .PHONY: clean
 clean:
 	rm -f kafka-replay

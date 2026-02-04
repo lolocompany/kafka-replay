@@ -24,11 +24,12 @@ Kafka Replay provides a simple, efficient solution for these use cases with a st
 
 ### Key Features
 
-- **Efficient binary format**: Messages are stored in a structured binary format with fixed-size headers for fast lookups
+- **Efficient binary format**: Messages are stored in a structured binary format with fixed-size headers for fast lookups (see [FORMAT.md](FORMAT.md) for details)
 - **Batch processing**: Replay uses batched writes for optimal performance
 - **Rate limiting**: Control the speed of message replay
 - **Timestamp preservation**: Optionally preserve original message timestamps
 - **Context-aware**: Properly handles cancellation and cleanup
+- **Protocol versioning**: File format includes version information for future compatibility
 
 ## Usage
 
@@ -95,7 +96,7 @@ Record messages from a Kafka topic to a binary log file.
 - `--topic, -t`: Kafka topic to record messages from (required)
 - `--partition, -p`: Kafka partition to record from (default: 0)
 - `--group-id, -g`: Consumer group ID (default: "kafka-replay-record")
-- `--output, -o`: Output file path (default: "kafka-record.jsonl")
+- `--output, -o`: Output file path (default: "messages.log")
 - `--offset, -O`: Start reading from a specific offset (-1 to use current position, 0 to start from beginning, default: -1)
 - `--limit, -l`: Maximum number of messages to record (0 for unlimited, default: 0)
 
@@ -160,7 +161,9 @@ Replay recorded messages from a log file back to a Kafka topic.
 - `--topic, -t`: Kafka topic to replay messages to (required)
 - `--input, -i`: Input file path containing recorded messages (required)
 - `--rate, -r`: Messages per second to replay (0 for maximum speed, default: 0)
-- `--preserve-timestamps`: Preserve original message timestamps
+- `--preserve-timestamps`: Preserve original message timestamps (default: false)
+- `--create-topic`: Create the topic if it doesn't exist (default: false)
+- `--loop`: Enable infinite looping - replay messages continuously until interrupted (default: false)
 
 **Examples:**
 
@@ -202,7 +205,7 @@ Display recorded messages from a message file in human-readable format.
 ./kafka-replay cat --input messages.log
 ```
 
-Output format:
+**Output format:**
 
 Each message is displayed as a JSON object on a single line:
 
@@ -218,17 +221,19 @@ The output format includes:
 
 ### File Format
 
-Messages are stored in a binary format for efficiency:
+Messages are stored in a structured binary format for efficiency. The format includes:
 
-- **Timestamp** (27 bytes, fixed): ISO 8601 timestamp when the message was recorded
-- **Size** (8 bytes, fixed): Message size in bytes (int64, big-endian)
-- **Data** (variable): The actual message bytes
+- **File header** (20 bytes): Protocol version and reserved space
+- **Message entries**: Each entry contains a Unix timestamp (8 bytes), message size (8 bytes), and message data (variable)
+
+For detailed information about the binary file format, including byte-level specifications and examples, see [FORMAT.md](FORMAT.md).
 
 This format enables:
 
 - Fast lookups (fixed-size headers)
 - Efficient storage
 - Easy parsing
+- Protocol versioning for future compatibility
 
 ## Development
 
@@ -317,13 +322,15 @@ kafka-replay/
 ├── cmd/                     # Entry points - contains code that relies on OS, IO, or global state
 │   └── kafka-replay/        # CLI application entry point
 ├── pkg/                     # Reusable packages - pure, testable code usable as dependencies
-│   └── kafka/               # Kafka client abstractions
+│   ├── kafka/               # Kafka client abstractions
+│   └── transcoder/          # Binary file format encoder/decoder
 ├── docker-compose.yml       # Local development environment
 ├── dockerfile               # Docker build configuration
 ├── go.mod                   # Go module definition
 ├── go.sum                   # Go module checksums
 ├── makefile                 # Build and test commands
 ├── LICENSE                  # License file
+├── FORMAT.md                # Binary file format specification
 ├── .gitignore               # Git ignore rules
 └── README.md                # This file
 ```
@@ -332,6 +339,7 @@ kafka-replay/
 
 - **`cmd/`**: Contains entry points and different ways of compiling the program. Code in `cmd` handles OS interactions, file I/O, and global state (CLI flags, environment variables).
 - **`pkg/`**: Contains reusable packages that can be used by entry points or imported as dependencies by other projects. Code in `pkg` should be as close as possible to pure functions and testable code, avoiding direct OS/IO dependencies where possible.
+  - **`pkg/transcoder/`**: Implements the binary file format using `EncodeWriter` and `DecodeReader` types that work with Go's standard `io.Writer` and `io.ReadSeeker` interfaces.
 
 ### Building and Running
 
