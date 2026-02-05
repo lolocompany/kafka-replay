@@ -2,7 +2,9 @@ package transcoder
 
 const (
 	// ProtocolVersion is the current version of the binary protocol
-	ProtocolVersion = 1
+	ProtocolVersion = 2
+	// ProtocolVersion1 is the legacy version 1 (without message keys)
+	ProtocolVersion1 = 1
 	// HeaderVersionSize is the size of the version field in the header (int32 = 4 bytes)
 	HeaderVersionSize = 4
 	// HeaderReservedSize is the size of reserved space in the header for future use
@@ -13,4 +15,6 @@ const (
 	TimestampSize = 8
 	// SizeFieldSize is the size of the message size field (int64 = 8 bytes)
 	SizeFieldSize = 8
+	// KeySizeFieldSize is the size of the key size field (int64 = 8 bytes)
+	KeySizeFieldSize = 8
 )

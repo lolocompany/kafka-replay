@@ -49,12 +49,12 @@ func TestEncodeWriter_Write(t *testing.T) {
 	testTime := time.Date(2024, 2, 2, 10, 15, 30, 0, time.UTC)
 	testData := []byte("Hello, World!")
 
-	bytesWritten, err := encoder.Write(testTime, testData)
+	bytesWritten, err := encoder.Write(testTime, testData, nil)
 	if err != nil {
 		t.Fatalf("Write failed: %v", err)
 	}
 
-	expectedBytes := int64(TimestampSize + SizeFieldSize + len(testData))
+	expectedBytes := int64(TimestampSize + KeySizeFieldSize + SizeFieldSize + len(testData))
 	if bytesWritten != expectedBytes {
 		t.Errorf("Expected %d bytes written, got %d", expectedBytes, bytesWritten)
 	}
@@ -76,6 +76,14 @@ func TestEncodeWriter_Write(t *testing.T) {
 		t.Errorf("Timestamp mismatch: expected %d, got %d", testTime.Unix(), unixTimestamp)
 	}
 	offset += TimestampSize
+
+	// Check key size (should be 0 for nil key)
+	keySizeBytes := allData[offset : offset+KeySizeFieldSize]
+	keySize := int64(binary.BigEndian.Uint64(keySizeBytes))
+	if keySize != 0 {
+		t.Errorf("Key size mismatch: expected 0, got %d", keySize)
+	}
+	offset += KeySizeFieldSize
 
 	// Check size
 	sizeBytes := allData[offset : offset+SizeFieldSize]
@@ -110,7 +118,7 @@ func TestEncodeWriter_MultipleWrites(t *testing.T) {
 
 	var totalWritten int64 = HeaderSize
 	for i, msg := range messages {
-		bytesWritten, err := encoder.Write(msg.timestamp, msg.data)
+		bytesWritten, err := encoder.Write(msg.timestamp, msg.data, nil)
 		if err != nil {
 			t.Fatalf("Write %d failed: %v", i, err)
 		}
@@ -133,6 +141,14 @@ func TestEncodeWriter_MultipleWrites(t *testing.T) {
 			t.Errorf("Message %d timestamp mismatch: expected %d, got %d", i, msg.timestamp.Unix(), unixTimestamp)
 		}
 		offset += TimestampSize
+
+		// Read key size (should be 0 for nil key)
+		keySizeBytes := allData[offset : offset+KeySizeFieldSize]
+		keySize := int64(binary.BigEndian.Uint64(keySizeBytes))
+		if keySize != 0 {
+			t.Errorf("Message %d key size mismatch: expected 0, got %d", i, keySize)
+		}
+		offset += KeySizeFieldSize
 
 		// Read size
 		sizeBytes := allData[offset : offset+SizeFieldSize]
@@ -161,19 +177,19 @@ func TestEncodeWriter_EmptyMessage(t *testing.T) {
 	testTime := time.Date(2024, 2, 2, 10, 15, 30, 0, time.UTC)
 	emptyData := []byte{}
 
-	bytesWritten, err := encoder.Write(testTime, emptyData)
+	bytesWritten, err := encoder.Write(testTime, emptyData, nil)
 	if err != nil {
 		t.Fatalf("Write failed: %v", err)
 	}
 
-	expectedBytes := int64(TimestampSize + SizeFieldSize)
+	expectedBytes := int64(TimestampSize + KeySizeFieldSize + SizeFieldSize)
 	if bytesWritten != expectedBytes {
 		t.Errorf("Expected %d bytes written, got %d", expectedBytes, bytesWritten)
 	}
 
 	// Verify size field is 0
 	allData := buf.Bytes()
-	offset := HeaderSize + TimestampSize
+	offset := HeaderSize + TimestampSize + KeySizeFieldSize
 	sizeBytes := allData[offset : offset+SizeFieldSize]
 	size := int64(binary.BigEndian.Uint64(sizeBytes))
 	if size != 0 {
@@ -194,12 +210,12 @@ func TestEncodeWriter_LargeMessage(t *testing.T) {
 		largeData[i] = byte(i % 256)
 	}
 
-	bytesWritten, err := encoder.Write(testTime, largeData)
+	bytesWritten, err := encoder.Write(testTime, largeData, nil)
 	if err != nil {
 		t.Fatalf("Write failed: %v", err)
 	}
 
-	expectedBytes := TimestampSize + SizeFieldSize + int64(len(largeData))
+	expectedBytes := TimestampSize + KeySizeFieldSize + SizeFieldSize + int64(len(largeData))
 	if bytesWritten != expectedBytes {
 		t.Errorf("Expected %d bytes written, got %d", expectedBytes, bytesWritten)
 	}

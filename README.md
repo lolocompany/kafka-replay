@@ -251,9 +251,9 @@ The `--count` flag outputs only the total number of messages in the file, useful
 Messages are stored in a structured binary format for efficiency. The format includes:
 
 - **File header** (20 bytes): Protocol version and reserved space
-- **Message entries**: Each entry contains a Unix timestamp (8 bytes), message size (8 bytes), and message data (variable)
+- **Message entries**: Each entry contains a Unix timestamp (8 bytes), key size (8 bytes), message size (8 bytes), key (optional), and message data (variable)
 
-For detailed information about the binary file format, including byte-level specifications and examples, see [FORMAT.md](FORMAT.md).
+For detailed information about the binary file format, including byte-level specifications and examples, see [FORMAT.md](FORMAT.md) (version 2, current format). For the legacy version 1 format, see [legacy/FORMAT_v1.md](legacy/FORMAT_v1.md).
 
 This format enables:
 
@@ -357,7 +357,9 @@ kafka-replay/
 ├── go.sum                   # Go module checksums
 ├── makefile                 # Build and test commands
 ├── LICENSE                  # License file
-├── FORMAT.md                # Binary file format specification
+├── FORMAT.md                # Binary file format specification (version 2)
+├── legacy/
+│   └── FORMAT_v1.md         # Legacy format specification (version 1)
 ├── .gitignore               # Git ignore rules
 └── README.md                # This file
 ```

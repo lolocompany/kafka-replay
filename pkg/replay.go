@@ -66,7 +66,7 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		}
 
 		// Read next complete message
-		timestamp, data, err := cfg.Decoder.Read()
+		entry, err := cfg.Decoder.Read()
 		if err != nil {
 			if err == io.EOF {
 				// End of file reached - flush remaining batch
@@ -110,15 +110,19 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 
 		// Add message to batch
 		kafkaMsg := kafka.Message{
-			Value: data,
-			Time:  timestamp,
+			Value: entry.Data,
+			Time:  entry.Timestamp,
+		}
+		// Set key if present (version 2 format or version 1 with no key)
+		if len(entry.Key) > 0 {
+			kafkaMsg.Key = entry.Key
 		}
 		// Set partition if specified in config
 		if cfg.Partition != nil {
 			kafkaMsg.Partition = *cfg.Partition
 		}
 		batch = append(batch, kafkaMsg)
-		batchBytes += int64(len(data))
+		batchBytes += int64(len(entry.Data))
 
 		messageCount++
 

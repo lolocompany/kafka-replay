@@ -13,7 +13,7 @@ import (
 type CatConfig struct {
 	Reader             io.ReadSeeker
 	PreserveTimestamps bool
-	Formatter          func(timestamp time.Time, data []byte) []byte
+	Formatter          func(timestamp time.Time, key []byte, data []byte) []byte
 	Output             io.Writer
 	FindBytes          []byte // Optional byte sequence to search for in messages
 	CountOnly          bool   // If true, only count messages without outputting them
@@ -40,7 +40,7 @@ func Cat(ctx context.Context, cfg CatConfig) (int, error) {
 		}
 
 		// Read next complete message
-		timestamp, data, err := decoder.Read()
+		entry, err := decoder.Read()
 		if err != nil {
 			if err == io.EOF {
 				// End of file reached
@@ -50,7 +50,7 @@ func Cat(ctx context.Context, cfg CatConfig) (int, error) {
 		}
 
 		// Filter by find bytes if specified
-		if cfg.FindBytes != nil && !bytes.Contains(data, cfg.FindBytes) {
+		if cfg.FindBytes != nil && !bytes.Contains(entry.Data, cfg.FindBytes) {
 			continue
 		}
 
@@ -63,7 +63,8 @@ func Cat(ctx context.Context, cfg CatConfig) (int, error) {
 		}
 
 		// Display message
-		formattedMessage := cfg.Formatter(timestamp, data)
+		// Note: key is read but not currently used in cat output
+		formattedMessage := cfg.Formatter(entry.Timestamp, entry.Key, entry.Data)
 		if _, err := cfg.Output.Write(formattedMessage); err != nil {
 			return count, err
 		}

@@ -57,7 +57,7 @@ func Record(ctx context.Context, cfg RecordConfig) (int64, int64, error) {
 		}
 
 		// Read next complete message
-		timestamp, messageData, err := cfg.Consumer.ReadNextMessage(ctx)
+		timestamp, key, messageData, err := cfg.Consumer.ReadNextMessage(ctx)
 		if err != nil {
 			if err == io.EOF {
 				// End of batch, continue to read next batch
@@ -76,8 +76,8 @@ func Record(ctx context.Context, cfg RecordConfig) (int64, int64, error) {
 			continue
 		}
 
-		// Write the matching message
-		if _, err := encoder.Write(timestamp, messageData); err != nil {
+		// Write the matching message (version 2 format with key)
+		if _, err := encoder.Write(timestamp, messageData, key); err != nil {
 			return encoder.TotalBytes(), messageCount, err
 		}
 		messageCount++

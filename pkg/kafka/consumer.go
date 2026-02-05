@@ -47,8 +47,8 @@ func (c *Consumer) Close() error {
 }
 
 // ReadNextMessage reads the next complete message from Kafka
-// Returns the message value bytes, or an error if no message is available or context is canceled
-func (c *Consumer) ReadNextMessage(ctx context.Context) (time.Time, []byte, error) {
+// Returns the message timestamp, key, value, and error
+func (c *Consumer) ReadNextMessage(ctx context.Context) (time.Time, []byte, []byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -70,9 +70,9 @@ func (c *Consumer) ReadNextMessage(ctx context.Context) (time.Time, []byte, erro
 
 		select {
 		case <-ctx.Done():
-			return time.Time{}, nil, ctx.Err()
+			return time.Time{}, nil, nil, ctx.Err()
 		case err := <-errChan:
-			return time.Time{}, nil, err
+			return time.Time{}, nil, nil, err
 		case b := <-batchChan:
 			c.batch = b
 		}
@@ -87,13 +87,18 @@ func (c *Consumer) ReadNextMessage(ctx context.Context) (time.Time, []byte, erro
 			c.batch.Close()
 			c.batch = nil
 		}
-		return time.Time{}, nil, err
+		return time.Time{}, nil, nil, err
 	}
 
-	// Return the message timestamp and value
+	// Return the message timestamp, key, and value
+	var key []byte
+	if len(msg.Key) > 0 {
+		key = make([]byte, len(msg.Key))
+		copy(key, msg.Key)
+	}
 	value := make([]byte, len(msg.Value))
 	copy(value, msg.Value)
-	return msg.Time, value, nil
+	return msg.Time, key, value, nil
 }
 
 func NewConsumer(ctx context.Context, brokers []string, topic string, partition int) (*Consumer, error) {

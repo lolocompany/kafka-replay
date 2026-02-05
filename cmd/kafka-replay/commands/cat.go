@@ -13,6 +13,7 @@ import (
 
 type catMessage struct {
 	Timestamp string `json:"timestamp"`
+	Key       string `json:"key"`
 	Data      string `json:"data"`
 }
 
@@ -99,13 +100,14 @@ func CatCommand() *cli.Command {
 	}
 }
 
-func rawFormatter(timestamp time.Time, data []byte) []byte {
+func rawFormatter(timestamp time.Time, key []byte, data []byte) []byte {
 	return data
 }
 
-func jsonFormatter(timestamp time.Time, data []byte) []byte {
+func jsonFormatter(timestamp time.Time, key []byte, data []byte) []byte {
 	catMessage := catMessage{
 		Timestamp: timestamp.Format(time.RFC3339Nano),
+		Key:       string(key),
 		Data:      string(data),
 	}
 	jsonMessage, err := json.Marshal(catMessage)
