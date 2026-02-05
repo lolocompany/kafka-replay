@@ -22,6 +22,12 @@ func InfoCommand() *cli.Command {
 				Aliases: []string{"b"},
 				Usage:   "Kafka broker address(es) (can be specified multiple times). Defaults to KAFKA_BROKERS env var if not provided.",
 			},
+			&cli.BoolFlag{
+				Name:    "reachable",
+				Aliases: []string{"r"},
+				Usage:   "Check broker reachability (disabled by default)",
+				Value:   false,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
@@ -30,7 +36,8 @@ func InfoCommand() *cli.Command {
 			}
 
 			clusterInfo, err := pkg.CollectInfo(ctx, pkg.InfoConfig{
-				Brokers: brokers,
+				Brokers:          brokers,
+				CheckReachability: cmd.Bool("reachable"),
 			})
 			if err != nil {
 				return err

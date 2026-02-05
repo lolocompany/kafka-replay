@@ -24,7 +24,8 @@ type ClusterInfo struct {
 
 // InfoConfig contains configuration for collecting cluster information
 type InfoConfig struct {
-	Brokers []string
+	Brokers          []string
+	CheckReachability bool
 }
 
 // CollectInfo collects information about the Kafka cluster
@@ -64,10 +65,14 @@ func CollectInfo(ctx context.Context, cfg InfoConfig) (*ClusterInfo, error) {
 	brokerMap := make(map[int]*BrokerInfo)
 	for _, broker := range brokers {
 		brokerAddress := broker.Host + ":" + fmt.Sprintf("%d", broker.Port)
+		reachable := false
+		if cfg.CheckReachability {
+			reachable = isBrokerReachable(ctx, brokerAddress)
+		}
 		brokerMap[broker.ID] = &BrokerInfo{
 			BrokerID:  broker.ID,
 			Address:   brokerAddress,
-			Reachable: isBrokerReachable(ctx, brokerAddress),
+			Reachable: reachable,
 			Topics:    make(map[string][]int),
 		}
 	}
