@@ -42,7 +42,6 @@ func CatCommand() *cli.Command {
 			},
 			&cli.BoolFlag{
 				Name:    "count",
-				Aliases: []string{"c"},
 				Usage:   "Only output the count of messages, don't display them",
 				Value:   false,
 			},

@@ -19,9 +19,10 @@ func ReplayCommand() *cli.Command {
 		Description: "Replay previously recorded messages from a file back to a Kafka topic.",
 		Flags: []cli.Flag{
 			&cli.StringSliceFlag{
-				Name:    "broker",
-				Aliases: []string{"b"},
-				Usage:   "Kafka broker address(es) (can be specified multiple times). Defaults to KAFKA_BROKERS env var if not provided.",
+				Name:     "broker",
+				Aliases:  []string{"b"},
+				Usage:    "Kafka broker address(es) (can be specified multiple times). Defaults to KAFKA_BROKERS env var if not provided.",
+				Sources:  cli.EnvVars("KAFKA_BROKERS"),
 			},
 			&cli.StringFlag{
 				Name:     "topic",
@@ -37,7 +38,6 @@ func ReplayCommand() *cli.Command {
 			},
 			&cli.IntFlag{
 				Name:    "rate",
-				Aliases: []string{"r"},
 				Usage:   "Messages per second to replay (0 for maximum speed)",
 				Value:   0,
 			},
@@ -69,9 +69,9 @@ func ReplayCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
-			if err != nil {
-				return err
+			brokers := cmd.StringSlice("broker")
+			if len(brokers) == 0 {
+				return fmt.Errorf("broker address(es) must be provided via --broker flag or KAFKA_BROKERS environment variable")
 			}
 			topic := cmd.String("topic")
 			input := cmd.String("input")

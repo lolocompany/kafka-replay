@@ -54,14 +54,22 @@ func VersionCommand() *cli.Command {
 			version := getVersion()
 			buildInfo, _ := debug.ReadBuildInfo()
 
-			versionInfo := map[string]interface{}{
-				"version": version,
+			type VersionInfo struct {
+				Version   string            `json:"version"`
+				GoVersion string            `json:"go_version,omitempty"`
+				GoOS      string            `json:"go_os,omitempty"`
+				GoArch    string            `json:"go_arch,omitempty"`
+				Build     map[string]string `json:"build,omitempty"`
+			}
+
+			versionInfo := VersionInfo{
+				Version: version,
 			}
 
 			if buildInfo != nil {
-				versionInfo["go_version"] = runtime.Version()
-				versionInfo["go_os"] = runtime.GOOS
-				versionInfo["go_arch"] = runtime.GOARCH
+				versionInfo.GoVersion = runtime.Version()
+				versionInfo.GoOS = runtime.GOOS
+				versionInfo.GoArch = runtime.GOARCH
 
 				buildSettings := make(map[string]string)
 				for _, setting := range buildInfo.Settings {
@@ -70,7 +78,7 @@ func VersionCommand() *cli.Command {
 					}
 				}
 				if len(buildSettings) > 0 {
-					versionInfo["build"] = buildSettings
+					versionInfo.Build = buildSettings
 				}
 			}
 

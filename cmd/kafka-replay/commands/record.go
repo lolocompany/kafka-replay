@@ -18,9 +18,10 @@ func RecordCommand() *cli.Command {
 		Description: "Record messages from a Kafka topic and save them to a file or output location.",
 		Flags: []cli.Flag{
 			&cli.StringSliceFlag{
-				Name:    "broker",
-				Aliases: []string{"b"},
-				Usage:   "Kafka broker address(es) (can be specified multiple times). Defaults to KAFKA_BROKERS env var if not provided.",
+				Name:     "broker",
+				Aliases:  []string{"b"},
+				Usage:    "Kafka broker address(es) (can be specified multiple times). Defaults to KAFKA_BROKERS env var if not provided.",
+				Sources:  cli.EnvVars("KAFKA_BROKERS"),
 			},
 			&cli.StringFlag{
 				Name:     "topic",
@@ -29,10 +30,10 @@ func RecordCommand() *cli.Command {
 				Required: true,
 			},
 			&cli.StringFlag{
-				Name:    "group-id",
+				Name:    "group",
 				Aliases: []string{"g"},
-				Usage:   "Consumer group ID",
-				Value:   "kafka-replay-record",
+				Usage:   "Consumer group ID (empty by default, uses direct partition access). Cannot be used together with --offset.",
+				Value:   "",
 			},
 			&cli.IntFlag{
 				Name:    "partition",
@@ -49,7 +50,7 @@ func RecordCommand() *cli.Command {
 			&cli.Int64Flag{
 				Name:    "offset",
 				Aliases: []string{"O"},
-				Usage:   "Start reading from a specific offset (-1 to use current position, 0 to start from beginning)",
+				Usage:   "Start reading from a specific offset (-1 to use current position, 0 to start from beginning). Cannot be used together with --group.",
 				Value:   -1,
 			},
 			&cli.IntFlag{
@@ -71,18 +72,24 @@ func RecordCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			brokers, err := util.ResolveBrokers(cmd.StringSlice("broker"))
-			if err != nil {
-				return err
+			brokers := cmd.StringSlice("broker")
+			if len(brokers) == 0 {
+				return fmt.Errorf("broker address(es) must be provided via --broker flag or KAFKA_BROKERS environment variable")
 			}
 			topic := cmd.String("topic")
-			groupID := cmd.String("group-id")
+			groupID := cmd.String("group")
 			partition := cmd.Int("partition")
 			output := cmd.String("output")
 			offsetFlag := cmd.Int64("offset")
 			limit := cmd.Int("limit")
 			timeout := cmd.Duration("timeout")
 			findStr := cmd.String("find")
+
+			// Validate that --group and --offset are not used together
+			// offsetFlag >= 0 means an explicit offset was provided (not the default -1)
+			if groupID != "" && offsetFlag >= 0 {
+				return fmt.Errorf("--group and --offset cannot be used together: consumer groups manage offsets automatically, while --offset requires direct partition access")
+			}
 
 			// Convert find string to byte slice if provided
 			var findBytes []byte
@@ -106,7 +113,11 @@ func RecordCommand() *cli.Command {
 			}
 
 			fmt.Fprintf(os.Stderr, "Recording messages from topic '%s' on brokers %v\n", topic, brokers)
-			fmt.Fprintf(os.Stderr, "Consumer group: %s\n", groupID)
+			if groupID != "" {
+				fmt.Fprintf(os.Stderr, "Consumer group: %s\n", groupID)
+			} else {
+				fmt.Fprintln(os.Stderr, "Using direct partition access (no consumer group)")
+			}
 			fmt.Fprintf(os.Stderr, "Output file: %s\n", output)
 			if offset != nil {
 				fmt.Fprintf(os.Stderr, "Starting from offset: %d\n", *offset)
@@ -122,7 +133,7 @@ func RecordCommand() *cli.Command {
 			if findStr != "" {
 				fmt.Fprintf(os.Stderr, "Find filter: %s\n", findStr)
 			}
-			consumer, err := kafka.NewConsumer(ctx, brokers, topic, partition)
+			consumer, err := kafka.NewConsumer(ctx, brokers, topic, partition, groupID)
 			if err != nil {
 				return err
 			}
