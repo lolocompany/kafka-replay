@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/lolocompany/kafka-replay/pkg/kafka"
+	"github.com/lolocompany/kafka-replay/v2/pkg/kafka"
 )
 
 // PartitionOutput represents a partition in the list output

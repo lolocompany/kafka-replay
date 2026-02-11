@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/config"
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/config"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/util"
 	"github.com/urfave/cli/v3"
 )
 

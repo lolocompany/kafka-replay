@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 
-	kafka "github.com/lolocompany/kafka-replay/pkg/kafka"
-	"github.com/lolocompany/kafka-replay/pkg/transcoder"
+	kafka "github.com/lolocompany/kafka-replay/v2/pkg/kafka"
+	"github.com/lolocompany/kafka-replay/v2/pkg/transcoder"
 )
 
 // RecordConfig holds configuration for the Record function

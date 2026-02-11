@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/commands"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/commands"
 	"github.com/urfave/cli/v3"
 )
 

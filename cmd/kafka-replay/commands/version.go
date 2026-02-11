@@ -34,7 +34,7 @@ func getVersion() string {
 
 		// Also check if this module appears in dependencies (for some build scenarios)
 		for _, dep := range info.Deps {
-			if dep.Path == "github.com/lolocompany/kafka-replay" {
+			if dep.Path == "github.com/lolocompany/kafka-replay/v2" {
 				if dep.Version != "" && dep.Version != "(devel)" {
 					return dep.Version
 				}

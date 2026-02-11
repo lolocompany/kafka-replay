@@ -1,7 +1,7 @@
 package util
 
 import (
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/config"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/config"
 	"github.com/urfave/cli/v3"
 )
 

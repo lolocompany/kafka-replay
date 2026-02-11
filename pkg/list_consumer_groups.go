@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lolocompany/kafka-replay/pkg/kafka/admin"
+	"github.com/lolocompany/kafka-replay/v2/pkg/kafka/admin"
 )
 
 // ConsumerGroupOutput represents a consumer group in the list output

@@ -6,10 +6,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
-	"github.com/lolocompany/kafka-replay/pkg"
-	"github.com/lolocompany/kafka-replay/pkg/kafka"
-	"github.com/lolocompany/kafka-replay/pkg/transcoder"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/util"
+	"github.com/lolocompany/kafka-replay/v2/pkg"
+	"github.com/lolocompany/kafka-replay/v2/pkg/kafka"
+	"github.com/lolocompany/kafka-replay/v2/pkg/transcoder"
 	"github.com/urfave/cli/v3"
 )
 

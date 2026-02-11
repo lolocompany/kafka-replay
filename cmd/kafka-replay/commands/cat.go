@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/util"
-	"github.com/lolocompany/kafka-replay/pkg"
-	"github.com/lolocompany/kafka-replay/cmd/kafka-replay/output"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/util"
+	"github.com/lolocompany/kafka-replay/v2/pkg"
+	"github.com/lolocompany/kafka-replay/v2/cmd/kafka-replay/output"
 	"github.com/urfave/cli/v3"
 )
 

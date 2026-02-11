@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/lolocompany/kafka-replay/pkg/transcoder/legacy"
+	"github.com/lolocompany/kafka-replay/v2/pkg/transcoder/legacy"
 )
 
 // DecodeReader decodes messages from a binary file format

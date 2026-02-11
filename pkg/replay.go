@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	kafkapkg "github.com/lolocompany/kafka-replay/pkg/kafka"
-	"github.com/lolocompany/kafka-replay/pkg/transcoder"
+	kafkapkg "github.com/lolocompany/kafka-replay/v2/pkg/kafka"
+	"github.com/lolocompany/kafka-replay/v2/pkg/transcoder"
 	"github.com/segmentio/kafka-go"
 )
 

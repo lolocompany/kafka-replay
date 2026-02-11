@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/lolocompany/kafka-replay/pkg/transcoder"
+	"github.com/lolocompany/kafka-replay/v2/pkg/transcoder"
 )
 
 type CatConfig struct {
