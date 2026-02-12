@@ -46,12 +46,11 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		cfg.LogWriter = os.Stderr
 	}
 
-	// Rate limiting setup
-	var rateLimiter *time.Ticker
+	// Rate limiting setup - track messages sent and time for steady rate
+	var messagesSent int64
+	var rateStartTime time.Time
 	if cfg.Rate > 0 {
-		interval := time.Second / time.Duration(cfg.Rate)
-		rateLimiter = time.NewTicker(interval)
-		defer rateLimiter.Stop()
+		rateStartTime = time.Now()
 	}
 
 	var messageCount int64
@@ -62,9 +61,40 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		if len(batch) == 0 {
 			return nil
 		}
+
+		// Rate limiting: ensure we don't exceed the rate limit
+		if cfg.Rate > 0 {
+			batchSize := int64(len(batch))
+			elapsed := time.Since(rateStartTime)
+			
+			// Calculate how many messages we should have sent by now
+			expectedMessages := int64(float64(cfg.Rate) * elapsed.Seconds())
+			
+			// If we're about to exceed the rate, wait
+			if messagesSent+batchSize > expectedMessages {
+				// Calculate how long to wait
+				// We want: messagesSent + batchSize <= rate * (elapsed + waitTime)
+				// So: waitTime >= (messagesSent + batchSize) / rate - elapsed
+				requiredTime := time.Duration(float64(messagesSent+batchSize) / float64(cfg.Rate) * float64(time.Second))
+				waitTime := requiredTime - elapsed
+				
+				if waitTime > 0 {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case <-time.After(waitTime):
+						// Wait complete, proceed
+					}
+					// Update elapsed time after waiting
+					elapsed = time.Since(rateStartTime)
+				}
+			}
+		}
+
 		if cfg.DryRun {
 			// In dry-run mode, skip actual writing but still validate
 			// The fact that we got here means decoding succeeded, so validation passes
+			messagesSent += int64(len(batch))
 			batch = batch[:0]
 			batchBytes = 0
 			return nil
@@ -72,6 +102,7 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		if err := cfg.Producer.WriteMessages(ctx, batch...); err != nil {
 			return fmt.Errorf("failed to write batch to Kafka: %w", err)
 		}
+		messagesSent += int64(len(batch))
 		batch = batch[:0]
 		batchBytes = 0
 		return nil
@@ -120,19 +151,6 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		// Filter by find bytes if specified
 		if cfg.FindBytes != nil && !bytes.Contains(entry.Data, cfg.FindBytes) {
 			continue
-		}
-
-		// Rate limiting - if enabled, wait before adding to batch
-		if rateLimiter != nil {
-			select {
-			case <-ctx.Done():
-				if err := flushBatch(); err != nil {
-					return messageCount, err
-				}
-				return messageCount, ctx.Err()
-			case <-rateLimiter.C:
-				// Rate limit tick received, proceed
-			}
 		}
 
 		// Build Kafka message
