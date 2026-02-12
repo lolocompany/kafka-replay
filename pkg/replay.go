@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,6 +30,7 @@ type ReplayConfig struct {
 	Partition *int // Optional partition to write to (nil for auto-assignment)
 	LogWriter io.Writer
 	DryRun    bool // If true, validate messages without actually sending to Kafka
+	FindBytes []byte // Optional byte sequence to search for in messages
 }
 
 func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
@@ -93,6 +95,11 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 				return messageCount, ctx.Err()
 			}
 			return messageCount, err
+		}
+
+		// Filter by find bytes if specified
+		if cfg.FindBytes != nil && !bytes.Contains(entry.Data, cfg.FindBytes) {
+			continue
 		}
 
 		// Rate limiting - if enabled, wait before adding to batch

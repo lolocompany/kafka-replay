@@ -62,6 +62,11 @@ func ReplayCommand() *cli.Command {
 				Usage: "Validate configuration, messages and connectivity without actually sending to Kafka",
 				Value: false,
 			},
+			&cli.StringFlag{
+				Name:    "find",
+				Aliases: []string{"f"},
+				Usage:   "Only replay messages containing the specified byte sequence (string is converted to bytes)",
+			},
 		),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			brokers, err := util.ResolveBrokers(cmd)
@@ -76,10 +81,17 @@ func ReplayCommand() *cli.Command {
 			loop := cmd.Bool("loop")
 			partitionFlag := cmd.Int("partition")
 			dryRun := cmd.Bool("dry-run")
+			findStr := cmd.String("find")
 
 			var partition *int
 			if partitionFlag >= 0 {
 				partition = &partitionFlag
+			}
+
+			// Convert find string to byte slice if provided
+			var findBytes []byte
+			if findStr != "" {
+				findBytes = []byte(findStr)
 			}
 
 			quiet := util.Quiet(cmd)
@@ -102,6 +114,9 @@ func ReplayCommand() *cli.Command {
 				}
 				if partition != nil {
 					fmt.Fprintf(os.Stderr, "Target partition: %d\n", *partition)
+				}
+				if findStr != "" {
+					fmt.Fprintf(os.Stderr, "Find filter: %s\n", findStr)
 				}
 			}
 
@@ -140,6 +155,7 @@ func ReplayCommand() *cli.Command {
 				Partition: partition,
 				LogWriter: logWriter,
 				DryRun:    dryRun,
+				FindBytes: findBytes,
 			})
 
 			if err != nil {
