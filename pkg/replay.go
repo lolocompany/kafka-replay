@@ -14,12 +14,6 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-const (
-	// DefaultBatchSize is the default number of messages to batch before writing
-	DefaultBatchSize = 100
-	// DefaultBatchBytes is the default maximum bytes to batch before writing (10MB)
-	DefaultBatchBytes = 10 * 1024 * 1024
-)
 
 // ReplayConfig holds configuration for the Replay function
 type ReplayConfig struct {
@@ -29,7 +23,7 @@ type ReplayConfig struct {
 	Loop      bool
 	Partition *int // Optional partition to write to (nil for auto-assignment)
 	LogWriter io.Writer
-	DryRun    bool // If true, validate messages without actually sending to Kafka
+	DryRun    bool   // If true, validate messages without actually sending to Kafka
 	FindBytes []byte // Optional byte sequence to search for in messages
 }
 
@@ -53,16 +47,11 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 	}
 
 	var messageCount int64
-	batch := make([]kafka.Message, 0, DefaultBatchSize)
-	var batchBytes int64
 
 	for {
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			if err := flushReplayBatch(ctx, cfg, batch); err != nil {
-				return messageCount, err
-			}
 			return messageCount, ctx.Err()
 		default:
 		}
@@ -71,27 +60,18 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 		entry, err := cfg.Decoder.Read()
 		if err != nil {
 			if err == io.EOF {
-				// End of file reached - flush remaining batch
-				if err := flushReplayBatch(ctx, cfg, batch); err != nil {
-					return messageCount, err
-				}
-
-				// Check if we should loop
+				// End of file reached - check if we should loop
 				if cfg.Loop {
 					if err := cfg.Decoder.Reset(); err != nil {
 						return messageCount, err
 					}
 					continue
 				}
-
 				// No more looping, exit
 				break
 			}
 			// Check if context was canceled
 			if ctx.Err() != nil {
-				if err := flushReplayBatch(ctx, cfg, batch); err != nil {
-					return messageCount, err
-				}
 				return messageCount, ctx.Err()
 			}
 			return messageCount, err
@@ -102,63 +82,36 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 			continue
 		}
 
-		// Rate limiting - if enabled, wait before adding to batch
+		// Rate limiting - if enabled, wait before sending
 		if rateLimiter != nil {
 			select {
 			case <-ctx.Done():
-				if err := flushReplayBatch(ctx, cfg, batch); err != nil {
-					return messageCount, err
-				}
 				return messageCount, ctx.Err()
 			case <-rateLimiter.C:
 				// Rate limit tick received, proceed
 			}
 		}
 
-		// Add message to batch
+		// Build Kafka message
 		kafkaMsg := kafka.Message{
-			Value: entry.Data,
-			Time:  entry.Timestamp,
+			Key:       entry.Key,
+			Value:     entry.Data,
+			Time:      entry.Timestamp,
+			Partition: *cfg.Partition,
 		}
-		// Set key if present (version 2 format or version 1 with no key)
-		if len(entry.Key) > 0 {
-			kafkaMsg.Key = entry.Key
+
+		// Write message - kafka-go Writer handles batching internally
+		if cfg.DryRun {
+			// In dry-run mode, skip actual writing but still validate
+			// The fact that we got here means decoding succeeded, so validation passes
+		} else {
+			if err := cfg.Producer.WriteMessages(ctx, kafkaMsg); err != nil {
+				return messageCount, fmt.Errorf("failed to write message: %w", err)
+			}
 		}
-		// Set partition if specified in config
-		if cfg.Partition != nil {
-			kafkaMsg.Partition = *cfg.Partition
-		}
-		batch = append(batch, kafkaMsg)
-		batchBytes += int64(len(entry.Data))
 
 		messageCount++
-
-		// Flush batch if it reaches size or byte limit
-		if len(batch) >= DefaultBatchSize || batchBytes >= DefaultBatchBytes {
-			if err := flushReplayBatch(ctx, cfg, batch); err != nil {
-				return messageCount, err
-			}
-			batch = batch[:0]
-			batchBytes = 0
-		}
 	}
 
 	return messageCount, nil
-}
-
-// flushReplayBatch writes the current batch to Kafka (or validates in dry-run mode)
-func flushReplayBatch(ctx context.Context, cfg ReplayConfig, batch []kafka.Message) error {
-	if len(batch) == 0 {
-		return nil
-	}
-	// In dry-run mode, skip actual writing but still validate the batch
-	if cfg.DryRun {
-		// Validate that messages are properly formed
-		// The fact that we got here means decoding succeeded, so validation passes
-		return nil
-	}
-	if err := cfg.Producer.WriteMessages(ctx, batch...); err != nil {
-		return fmt.Errorf("failed to write batch to Kafka: %w", err)
-	}
-	return nil
 }
