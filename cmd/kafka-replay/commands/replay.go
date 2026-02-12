@@ -67,6 +67,11 @@ func ReplayCommand() *cli.Command {
 				Aliases: []string{"f"},
 				Usage:   "Only replay messages containing the specified byte sequence (string is converted to bytes)",
 			},
+			&cli.BoolFlag{
+				Name:  "no-ack",
+				Usage: "Don't wait for broker acknowledgment (faster but less reliable - messages may be lost if broker fails immediately)",
+				Value: false,
+			},
 		),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			brokers, err := util.ResolveBrokers(cmd)
@@ -82,6 +87,7 @@ func ReplayCommand() *cli.Command {
 			partitionFlag := cmd.Int("partition")
 			dryRun := cmd.Bool("dry-run")
 			findStr := cmd.String("find")
+			noAck := cmd.Bool("no-ack")
 
 			var partition *int
 			if partitionFlag >= 0 {
@@ -118,6 +124,9 @@ func ReplayCommand() *cli.Command {
 				if findStr != "" {
 					fmt.Fprintf(os.Stderr, "Find filter: %s\n", findStr)
 				}
+				if noAck {
+					fmt.Fprintln(os.Stderr, "No acknowledgment: enabled (faster but less reliable)")
+				}
 			}
 
 			// Open input file
@@ -140,7 +149,7 @@ func ReplayCommand() *cli.Command {
 			}
 
 			// Create Kafka producer
-			producer := kafka.NewProducer(brokers, topic, createTopic)
+			producer := kafka.NewProducer(brokers, topic, createTopic, noAck)
 			defer producer.Close()
 
 			logWriter := io.Writer(os.Stderr)
