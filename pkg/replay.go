@@ -14,7 +14,6 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-
 // ReplayConfig holds configuration for the Replay function
 type ReplayConfig struct {
 	Producer  *kafkapkg.Producer
@@ -94,10 +93,13 @@ func Replay(ctx context.Context, cfg ReplayConfig) (int64, error) {
 
 		// Build Kafka message
 		kafkaMsg := kafka.Message{
-			Key:       entry.Key,
-			Value:     entry.Data,
-			Time:      entry.Timestamp,
-			Partition: *cfg.Partition,
+			Key:   entry.Key,
+			Value: entry.Data,
+			Time:  entry.Timestamp,
+		}
+		// Set partition if specified in config (nil means auto-assignment)
+		if cfg.Partition != nil {
+			kafkaMsg.Partition = *cfg.Partition
 		}
 
 		// Write message - kafka-go Writer handles batching internally
