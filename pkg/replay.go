@@ -16,12 +16,11 @@ import (
 
 const (
 	// BatchSize is the number of messages to batch before writing to Kafka
-	// This works with kafka-go Writer's internal batching (BatchSize: 10000)
-	// to maximize throughput
-	BatchSize = 5000
+	// Matches kafka-go Writer's BatchSize (10000) to maximize throughput
+	BatchSize = 10000
 	// BatchBytes is the maximum bytes to batch before writing
-	// This works with kafka-go Writer's internal batching (BatchBytes: 50MB)
-	BatchBytes = 40 * 1024 * 1024 // 40MB
+	// Matches kafka-go Writer's BatchBytes (50MB) to maximize throughput
+	BatchBytes = 50 * 1024 * 1024 // 50MB
 )
 
 // ReplayConfig holds configuration for the Replay function
