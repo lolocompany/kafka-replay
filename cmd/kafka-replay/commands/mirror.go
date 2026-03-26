@@ -103,7 +103,7 @@ func MirrorCommand() *cli.Command {
 		),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			// Load config
-			cfg, err := util.LoadConfigForCmd(cmd)
+			cfg, err := config.LoadConfig(cmd.String("config"))
 			if err != nil {
 				return err
 			}
@@ -169,7 +169,7 @@ func MirrorCommand() *cli.Command {
 				partition = &partitionFlag
 			}
 
-			quiet := util.Quiet(cmd)
+			quiet := cmd.Bool("quiet")
 			if !quiet {
 				if dryRun {
 					fmt.Fprintln(os.Stderr, "DRY RUN MODE: No messages will be sent to Kafka")

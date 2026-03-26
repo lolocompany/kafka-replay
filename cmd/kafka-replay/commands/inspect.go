@@ -57,7 +57,7 @@ func inspectTopicCommand() *cli.Command {
 			if len(filtered) == 0 {
 				return fmt.Errorf("topic %q not found", topicName)
 			}
-			format, err := output.ParseFormat(util.GetFormat(cmd), output.IsTTY(os.Stdout))
+			format, err := output.ParseFormat(cmd.String("format"), output.IsTTY(os.Stdout))
 			if err != nil {
 				return err
 			}
@@ -102,7 +102,7 @@ func inspectConsumerGroupCommand() *cli.Command {
 			}
 			for _, g := range groups {
 				if g.GroupID == groupID {
-					format, _ := output.ParseFormat(util.GetFormat(cmd), output.IsTTY(os.Stdout))
+					format, _ := output.ParseFormat(cmd.String("format"), output.IsTTY(os.Stdout))
 					enc := output.NewEncoder(format, os.Stdout)
 					return output.EncodeSlice(enc, []pkg.ConsumerGroupOutput{g})
 				}

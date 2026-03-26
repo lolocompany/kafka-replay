@@ -29,7 +29,7 @@ func listBrokersCommand() *cli.Command {
 				return err
 			}
 
-			format, err := output.ParseFormat(util.GetFormat(cmd), output.IsTTY(os.Stdout))
+			format, err := output.ParseFormat(cmd.String("format"), output.IsTTY(os.Stdout))
 			if err != nil {
 				return err
 			}

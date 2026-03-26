@@ -16,6 +16,7 @@ func main() {
 		Description: "Record messages from Kafka topics or replay previously recorded messages back to Kafka topics.",
 		Commands: []*cli.Command{
 			commands.ListCommand(),
+			commands.TUICommand(),
 			commands.RecordCommand(),
 			commands.ReplayCommand(),
 			commands.MirrorCommand(),

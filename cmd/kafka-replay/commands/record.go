@@ -106,7 +106,7 @@ func RecordCommand() *cli.Command {
 				offset = &offsetFlag
 			}
 
-			quiet := util.Quiet(cmd)
+			quiet := cmd.Bool("quiet")
 			if !quiet {
 				fmt.Fprintf(os.Stderr, "Recording messages from topic '%s' on brokers %v\n", topic, brokers)
 				if groupID != "" {

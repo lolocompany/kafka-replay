@@ -100,7 +100,7 @@ func ReplayCommand() *cli.Command {
 				findBytes = []byte(findStr)
 			}
 
-			quiet := util.Quiet(cmd)
+			quiet := cmd.Bool("quiet")
 			if !quiet {
 				if dryRun {
 					fmt.Fprintln(os.Stderr, "DRY RUN MODE: No messages will be sent to Kafka")

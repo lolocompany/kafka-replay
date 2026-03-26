@@ -61,7 +61,7 @@ func CatCommand() *cli.Command {
 			defer file.Close()
 
 			// For cat, default to json when --format is not set
-			formatStr := util.GetFormat(cmd)
+			formatStr := cmd.String("format")
 			if formatStr == "" {
 				formatStr = "json"
 			}
